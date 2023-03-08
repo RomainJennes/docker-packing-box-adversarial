@@ -2,12 +2,54 @@ defaults:
   maintained: true
 
 
+Capa:
+  author: Mandiant
+  description: FLARE team's open-source tool to identify capabilities in executable files
+  formats:
+    - All
+  install:
+    - wget: https://github.com/mandiant/capa:latest{linux}
+    - unzip: $OPT/capa
+    - ln: $OPT/capa/capa
+    - git: https://github.com/mandiant/capa-rules $OPT/capa/rules
+  source: https://github.com/mandiant/capa
+
+ClamScan:
+  description: ClamAV® is an open-source antivirus engine for detecting trojans, viruses, malware & other malicious threats.
+  formats:
+    - ELF
+    - PE
+  install:
+    - apt: clamav
+    - exec: sudo freshclam
+  source: https://www.clamav.net
+  status: ok
+
 Exeinfo_PE:
   description: Exeinfo PE is a program that lets you verify .exe files and check out all their properties. You can also change the file name, directly open the .exe, or simply delete it. Another piece of info provided is the exact size and the point of entry. In short, you can access dozens of different options to edit any Windows executable file.
   formats:
     - PE
   source: https://exeinfo-pe.fr.uptodown.com/windows
   status: info
+
+F-Prot:
+  comment: CYREN, which bought F-Prot, has discontinued the product ; signatures update stopped on 31 July 2021.
+  description: F-PROT Antivirus products are easy to use, reliable and demand little of the user's system resources. With their combined speed and reliable detection methods, F-PROT Antivirus products are the ideal computer security solution for home users.
+  formats:
+    - All
+  install:
+    - untar: $OPT
+    - cd: $OPT/f-prot/
+    - exec:
+        - sudo ./install-f-prot.pl
+        - sudo mv /usr/local/bin/fpscan $BIN/f-prot
+        - sudo chown user:user $BIN/f-prot
+  maintained: false
+  references:
+    - https://web.archive.org/web/20200711092511/http://www.f-prot.com/products/home_use/linux
+    - https://sebsauvage.net/wiki/doku.php?id=fprot-linux
+  source: https://web.archive.org/web/20190308154044/http://files.f-prot.com/files/unix-trial/fp-Linux.x86.64-ws.tar.gz
+  status: ok
 
 GetTyp:
   author: PHaX
@@ -17,12 +59,12 @@ GetTyp:
     - PE32
   install:
     - unzip: $OPT/gettyp
-    - ln:    $OPT/gettyp/gt.sh
+    - ln: $OPT/gettyp/gt.sh
   maintained: false
   references:
     - https://www.helger.com/gt/gt.htm
-  source:  https://defacto2.net/f/aa2e6ec
-  status:  ok
+  source: https://defacto2.net/f/aa2e6ec
+  status: ok
   version: <output>
 
 NPEFileAnalyzer:
@@ -73,9 +115,21 @@ PortEx:
     - exec: mv $TMP/portex.jar $OPT/
     - java: $OPT/portex.jar
   license: apache-2.0
-  source:  https://github.com/katjahahn/PortEx
-  status:  ok
+  source: https://github.com/katjahahn/PortEx
+  status: ok
   version: <output>
+
+TrID:
+  author: M. Pontello
+  description: TrID is a utility designed to identify file types from their binary signatures. While there are similar utilities with hard coded logic, TrID has no fixed rules. Instead, it's extensible and can be trained to recognize new formats in a fast and automatic way. It has many uses like identifying what kind of file was sent to you via e-mail, aiding in forensic analysis, supporting in file recovery, etc. TrID uses a database of definitions which describe recurring patterns for supported file types.
+  formats:
+    - All
+  install:
+    - unzip: $OPT/trid
+    - ln: $OPT/trid/trid
+    - ln: $OPT/trid/tridupdate tridupdate
+  source: https://mark0.net/soft-trid-e.html
+  status: ok
 
 Unix_File:
   comment: This tool is a file analyzer and is only able to detect well-known compressors such as UPX, PEtite or PECompact.

@@ -191,7 +191,11 @@ Supervised:
 
 Unsupervised:
   defaults:
-    metrics: clustering
+    metrics:
+      - classification
+      - clustering
+    preprocessors:
+      - Std
   AC:
     base:        !!python/name:sklearn.cluster.AgglomerativeClustering
     description: Agglomerative Clustering
@@ -273,16 +277,6 @@ Unsupervised:
         min_cluster_size: null
         cluster_method :  xi 
         algorithm:        auto 
-  PCA:
-    base:        !!python/name:sklearn.decomposition.PCA
-    description: Principal Component Analysis
-    link:        https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html
-    parameters:
-      static:
-        n_components:               null
-        whiten:                     False
-        power_iteration_normalizer: auto
-        svd_solver :                auto
   SC:
     base:        !!python/name:sklearn.cluster.SpectralClustering
     description: Spectral Clustering
