@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 import yaml
 from tinyscript import logging, re
-
+import lief
 from .__common__ import *
 from .__common__ import __all__ as __common__
 from .elf import *
@@ -12,13 +12,19 @@ from .pe import *
 from .pe import __all__ as __pe__
 from ...common.config import config
 from ...common.utils import dict2, expand_formats, FORMATS
-from ...common.parsers import *
 
 __all__ = ["Modifiers"]
 
 
 class Modifier(dict2):
-    _fields = {'apply': True}
+    _fields = {'apply': True, 'loop': None, 'grid': None}
+    def __call__(self, d, parser=None, **kw):
+        if self.loop is not None:
+            for _ in range(self.loop):
+                parser = super().__call__(d, parser=parser, **kw)
+            return parser
+        else:
+            return super().__call__(d, parser=parser, **kw)
 
 
 class Modifiers(list):
@@ -52,22 +58,32 @@ class Modifiers(list):
                                 Modifiers.registry.setdefault(c2, {})
                                 Modifiers.registry[c2][m.name] = m
         if exe is not None:
-            parsed, parser = None, None
+            parser = None
             for name, modifier in Modifiers.registry[exe.format].items():
                 if not modifier.apply:
                     continue
-                if modifier.parser is not None:
-                    modifier = globals()[modifier.parser](modifier)
+                
                 d = {}
-                d.update(__common__)
+                if parser is None:
+                    tmp_parser = lief.parse(str(exe.destination))
+                    d.update(sections=list(tmp_parser.sections))
+                else:
+                    d.update(sections=list(parser.get_sections()),
+                             compute_checksum=parser.compute_checksum)
+                
+                d.update({k: globals()[k] for k in __common__})
                 md = __elf__ if exe.format in expand_formats("ELF") else \
                      __macho__ if exe.format in expand_formats("Mach-O") else\
                      __pe__ if exe.format in expand_formats("PE") else []
                 d.update({k: globals()[k] for k in md})
-                kw = {'executable': exe}
+                d.update(Modifiers.registry[exe.format])
+                
+                kw = {'executable': exe, 'parser': parser}
                 try:
-                    modifier(d, **kw)
+                    parser = modifier(d, **kw)
                     self.append(name)
                 except Exception as e:
                     self.logger.warning("%s: %s" % (name, str(e)))
-
+            
+            if parser is not None:
+                parser.build()
