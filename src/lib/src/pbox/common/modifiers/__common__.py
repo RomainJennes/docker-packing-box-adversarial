@@ -3,8 +3,9 @@ import lief
 from random import choices
 import os.path as osp
 import json
+from ...learning.model import Model
 
-__all__ = ["COMMON_PE_SECTION_NAMES", "STD_SECTION_NAMES", "COMMON_PACKER_SECTION_NAMES", "COMMON_API_IMPORTS", "choices", "next"]
+__all__ = ["COMMON_PE_SECTION_NAMES", "STD_SECTION_NAMES", "COMMON_PACKER_SECTION_NAMES", "COMMON_API_IMPORTS", "choices", "next", 'models']
 
 path = osp.dirname(__file__)
 
@@ -21,3 +22,5 @@ with open(osp.join(path, "common_dll_imports.json")) as fin:
 STD_SECTION_NAMES = ['.text','.data','.crt','.bss','.rsrc','.idata','.edata','.reloc','.tls','.rdata']
 
 next=next
+    
+models = list(Model.iteritems())

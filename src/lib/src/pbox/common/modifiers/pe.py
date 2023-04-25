@@ -1,12 +1,15 @@
 import lief
+
 from .parsers import parser_handler, parse_exe_info_default, SectionAbstract
-from math import ceil
+from .__common__ import *
+from .optimized_attack_ch import optimized_attack
 
 __all__ = ["section_name", "add_section", "append_to_section", "move_entrypoint_to_new_section",
            "move_entrypoint_to_slack_space", "add_API_to_IAT", "add_lib_to_IAT", "get_section_name",
            "sections_with_slack_space", "sections_with_slack_space_entry_jump", "nop",
            "virtual_size", "raw_data_size", "append_to_section_force", "get_section",
-           "section_name_all", "set_checksum", "loop", "grid", "content_size", "has_characteristic",
+           "section_name_all", "set_checksum", "loop", "grid", "content_size","has_characteristic",
+           "optimized_attack",
            "SECTION_TYPES", "SECTION_CHARACTERISTICS"]
 
 ##############################################################################
@@ -14,10 +17,9 @@ __all__ = ["section_name", "add_section", "append_to_section", "move_entrypoint_
 ##############################################################################
 
 SECTION_CHARACTERISTICS = lief.PE.SECTION_CHARACTERISTICS.__entries
-SECTION_CHARACTERISTICS.update((k, SECTION_CHARACTERISTICS[k][0])
-                               for k in SECTION_CHARACTERISTICS)
+SECTION_CHARACTERISTICS= {k: SECTION_CHARACTERISTICS[k][0] for k in SECTION_CHARACTERISTICS}
 SECTION_TYPES = lief.PE.SECTION_TYPES.__entries
-SECTION_TYPES.update((k, SECTION_TYPES[k][0]) for k in SECTION_TYPES)
+SECTION_TYPES= {k: SECTION_TYPES[k][0] for k in SECTION_TYPES}
 
 
 def parse_section_input(section_input, parsed):
@@ -136,20 +138,18 @@ def pipeline(modifiers):
 
 
 def grid(modifier, params_grid, **eval_data):
-    def _grid(parser=None, executable=None, **kw):
+    def _grid(parser=None, namespace={}, **kw):
         for params in params_grid:
-            d = globals()
-            d = parse_exe_info_default(parser, executable, d)
-            d.update(params)
-            d.update(eval_data)
-            parser = modifier(d, parser=parser, executable=executable, **kw)
+            namespace.update(params)
+            namespace.update(eval_data)
+            parser = modifier(namespace, parser=parser, namespace=namespace, **kw)
         return parser
     return _grid
 
 
 def loop(modifier, n, **eval_data):
     def _loop(**kw):
-        return grid(modifier, [{} for _ in range(n)], **eval_data)(**kw)
+        return grid(modifier, [{'_':None} for _ in range(n)], **eval_data)(**kw)
     return _loop
 
 
@@ -448,5 +448,5 @@ def set_checksum(value):
     @parser_handler("lief_parser")
     def _set_checksum(parsed, **kw):
         parsed.optional_header.checksum = value
-
+    
     return _set_checksum

@@ -257,6 +257,7 @@ class Dataset:
     @backup
     def alter(self, new_name=None, percentage=1, query=None, **kw):
         """ Alter executables with some given modifiers. """
+        from .modifiers import Modifiers
         l = self.logger
         if not self._files:
             l.warning("Modifiers work only if the files are available")

@@ -647,6 +647,25 @@ class Model(BaseModel):
         self._metadata['algorithm']['parameters'] = params
         self._save()
     
+    def predict(self, executable, proba=False, multiclass=False, **kw):
+        l, ds = self.logger, executable
+        if len(self.pipeline.steps) == 0:
+            l.warning("Model shall be trained before testing")
+            return
+        kw['data_only'], kw['dataset'] = True, ds
+        if not self._prepare(proba=proba, multiclass=multiclass **kw):
+            return
+        cls = self._algorithm = Algorithm.get(self._metadata['algorithm']['name'])
+        if kw.get('proba', False):
+            try:
+                proba = self.pipeline.predict_proba(self._data)
+                return proba[:, 1]
+            except AttributeError:
+                raise ValueError("Model doesn't provide a probability")
+        else:
+            return self.pipeline.predict(self._data)
+        
+    
     def visualize(self, export=False, output_dir=".", **kw):
         """ Plot the model for visualization. """
         if len(self.pipeline.steps) == 0:
