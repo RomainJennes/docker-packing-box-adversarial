@@ -8,7 +8,7 @@ __all__ = ["section_name", "add_section", "append_to_section", "move_entrypoint_
            "move_entrypoint_to_slack_space", "add_API_to_IAT", "add_lib_to_IAT", "get_section_name",
            "sections_with_slack_space", "sections_with_slack_space_entry_jump", "nop",
            "virtual_size", "raw_data_size", "append_to_section_force", "get_section",
-           "section_name_all", "set_checksum", "loop", "grid", "content_size","has_characteristic",
+           "section_name_all", "set_checksum", "loop", "grid", "content_size", "has_characteristic",
            "optimized_attack",
            "SECTION_TYPES", "SECTION_CHARACTERISTICS"]
 

@@ -20,7 +20,7 @@ with open(osp.join(path, "common_dll_imports.json")) as fin:
     COMMON_API_IMPORTS = [(lib, api) for lib in d for api in d[lib]]
 
 STD_SECTION_NAMES = ['.text','.data','.crt','.bss','.rsrc','.idata','.edata','.reloc','.tls','.rdata']
-
+models = list(Model.iteritems())
 next=next
     
 models = list(Model.iteritems())
