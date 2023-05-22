@@ -7,7 +7,6 @@ from tqdm import tqdm
 
 from .config import *
 from .executable import *
-from .modifiers import *
 from .utils import *
 from ..items import *
 
@@ -263,6 +262,7 @@ class Dataset:
     @backup
     def alter(self, new_name=None, percentage=.1, **kw):
         """ Alter executables with some given modifiers. """
+        from .modifiers import Modifiers
         l = self.logger
         if not self._files:
             l.warning("Modifiers only work on a normal dataset (not on a fileless one)")
