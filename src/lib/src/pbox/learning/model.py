@@ -653,10 +653,10 @@ class Model(BaseModel):
             l.warning("Model shall be trained before testing")
             return
         kw['data_only'], kw['dataset'] = True, ds
-        if not self._prepare(proba=proba, multiclass=multiclass **kw):
+        if not self._prepare(proba=proba, multiclass=multiclass, **kw):
             return
         cls = self._algorithm = Algorithm.get(self._metadata['algorithm']['name'])
-        if kw.get('proba', False):
+        if proba:
             try:
                 proba = self.pipeline.predict_proba(self._data)
                 return proba[:, 1]

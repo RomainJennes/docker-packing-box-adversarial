@@ -137,19 +137,19 @@ def pipeline(modifiers):
 """
 
 
-def grid(modifier, params_grid, **eval_data):
-    def _grid(parser=None, namespace={}, **kw):
+def grid(modifier, params_grid):
+    def _grid(parser=None, executable=None, namespace={}, **kw):
         for params in params_grid:
-            namespace.update(params)
-            namespace.update(eval_data)
-            parser = modifier(namespace, parser=parser, namespace=namespace, **kw)
+            d = parse_exe_info_default(parser, executable, namespace)
+            d.update(params)
+            parser = modifier(d, parser=parser, executable=executable, **kw)
         return parser
     return _grid
 
 
-def loop(modifier, n, **eval_data):
+def loop(modifier, n):
     def _loop(**kw):
-        return grid(modifier, [{'_':None} for _ in range(n)], **eval_data)(**kw)
+        return grid(modifier, [{'_':None} for _ in range(n)])(**kw)
     return _loop
 
 
