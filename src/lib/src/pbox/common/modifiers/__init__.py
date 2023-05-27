@@ -80,7 +80,7 @@ class Modifiers(list):
                 d.update({k: globals()[k] for k in md})
                 d.update(Modifiers.registry[exe.format])
                 
-                kw = {'executable': exe, 'parser': parser}
+                kw = {'executable': exe, 'parser': parser, 'namespace':d}
                 try:
                     parser = modifier(d, **kw)
                     self.append(name)
