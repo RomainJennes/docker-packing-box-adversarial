@@ -2,6 +2,7 @@
 import yaml
 from tinyscript import logging, re
 import lief
+import numpy
 from .__common__ import *
 from .__common__ import __all__ as __common__
 from .elf import *
