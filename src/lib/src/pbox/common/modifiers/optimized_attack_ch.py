@@ -1,5 +1,4 @@
 from ...learning.model import open_model
-import cleverhans.torch.attacks as ch_attacks
 from cleverhans.torch.attacks.hop_skip_jump_attack import hop_skip_jump_attack
 from cleverhans.torch.attacks.carlini_wagner_l2 import carlini_wagner_l2
 from cleverhans.torch.attacks.fast_gradient_method import fast_gradient_method
@@ -13,7 +12,7 @@ from random import random
 from torch import Tensor
 from tinyscript.helpers import Path
 import numpy as np
-
+SCIPY_BB = ["Nelder-Mead", "Powell", "SLSQP", "COBYLA"]
 
 def optimized_attack(modifier_names, grid, model, attack="FGM", print_results=False, **model_kw):
     from ..modifiers import Modifiers
@@ -47,14 +46,44 @@ def optimized_attack(modifier_names, grid, model, attack="FGM", print_results=Fa
                         Tensor([[random() for _ in range(space_size)]]),
                         eps=1,
                         norm=2,
-                        nb_iter=200,
-                        spsa_samples=32,
+                        nb_iter=10,
+                        spsa_samples=30,
                         learning_rate=0.01,
-                        delta=0.1,
+                        delta=0.05,
                         clip_min=0,
                         clip_max=1,
                         is_debug=True
                         )
+        elif attack in SCIPY_BB:
+            from scipy.optimize import minimize
+            f = lambda x: model_fn(np.reshape(x,(1, space_size)), tensor=False)[0][1]
+            res = minimize(f, x0=np.array([0.5 for _ in range(space_size)]) , method=attack,
+                           bounds=[(0,1)]*space_size)
+            print(["Failure", "Success"][res.success])
+            print(res.message)
+            print(f"{res.x} gives {f(res.x)}")
+            t_adv = [res.x]
+        
+        elif attack in [x + "+HopSkipJump" for x in SCIPY_BB]:
+            from scipy.optimize import minimize
+            f = lambda x: model_fn(np.reshape(x,(1, space_size)), tensor=False)[0][1]
+            res = minimize(f, x0=np.array([0]*space_size) , method=attack.split('+')[0], bounds=[(0,1)]*space_size)
+            print(res.message)
+            print(f"{res.x} gives {f(res.x)}")
+            if f(res.x) < 0.5:
+                t_adv = hop_skip_jump_attack(model_fn,
+                                        Tensor([[0]*space_size]),
+                                        2,
+                                        image_target=Tensor([res.x]),
+                                        constraint=2,
+                                        gamma=2,
+                                        num_iterations=10,
+                                        initial_num_evals=10,
+                                        max_num_evals=100)
+            else:
+                t_adv = [res.x]
+        else:
+            raise ValueError("%s optimisation algorithm is not defined." % attack)
         
         model_fn.cleanup()
         model_fn.apply_alterations(t_adv[0], executable, verbose=True)
@@ -63,6 +92,7 @@ def optimized_attack(modifier_names, grid, model, attack="FGM", print_results=Fa
 
 class ClassiferWrapper:
     
+    @logging.bindLogger
     def __init__(self, model_name, executable, modifiers, grid, namespace, modifier_kw, model_kw, print_results=False):
         self.model = open_model(model_name)
         self.executable = executable
@@ -75,8 +105,7 @@ class ClassiferWrapper:
         self.model_kw = model_kw
         self.print_results = print_results
     
-    def __call__(self, t):
-
+    def __call__(self, t, tensor=True):
         pred = np.zeros((t.shape[0],2))
         if self.print_results:
             print(t)
@@ -89,9 +118,11 @@ class ClassiferWrapper:
             pred[i][1] = self.model.predict(str(self.executable.destination), **self.model_kw)
             pred[i][0] = 1 - pred[i][1]
             self.executable.destination.remove()
+        if tensor:
+            pred = Tensor(pred)
         if self.print_results:
-            print(Tensor(pred))
-        return Tensor(pred)
+            print(pred)
+        return pred
     
     def cleanup(self):
         #self.executable.destination.remove()
@@ -106,8 +137,10 @@ class ClassiferWrapper:
             #namespace = self.namespace.copy()
             for param in self.grid[modifier.name]:
                 n_vals = len(self.grid[modifier.name][param])
-                modifier.parameters[param] = self.grid[modifier.name][param][min(max(int((t[i]*n_vals).floor()), 0), n_vals-1)]
-
+                if t is Tensor:
+                    modifier.parameters[param] = self.grid[modifier.name][param][min(max(int((t[i]*n_vals).floor()), 0), n_vals-1)]
+                else:
+                    modifier.parameters[param] = self.grid[modifier.name][param][min(max(int(np.floor(t[i]*n_vals)), 0), n_vals-1)]
                 i += 1
             if t[i] > 0.5:
                 if verbose:
