@@ -12,7 +12,7 @@ from random import random
 from torch import Tensor
 from tinyscript.helpers import Path
 import numpy as np
-SCIPY_BB = ["Nelder-Mead", "Powell", "SLSQP", "COBYLA"]
+SCIPY_BB = ["Nelder-Mead", "Powell", "SLSQP", "COBYLA", "BFGS"]
 
 def optimized_attack(modifier_names, grid, model, attack="FGM", print_results=False, **model_kw):
     from ..modifiers import Modifiers
@@ -35,7 +35,8 @@ def optimized_attack(modifier_names, grid, model, attack="FGM", print_results=Fa
                                         gamma=2,
                                         num_iterations=10,
                                         initial_num_evals=10,
-                                        max_num_evals=100)
+                                        max_num_evals=100,
+                                        batch_size=10)
         elif attack == "FGM":
             t_adv = fast_gradient_method(model_fn,
                                         Tensor([[0]*space_size]),
@@ -57,34 +58,69 @@ def optimized_attack(modifier_names, grid, model, attack="FGM", print_results=Fa
         elif attack in SCIPY_BB:
             from scipy.optimize import minimize
             f = lambda x: model_fn(np.reshape(x,(1, space_size)), tensor=False)[0][1]
-            res = minimize(f, x0=np.array([0.5 for _ in range(space_size)]) , method=attack,
-                           bounds=[(0,1)]*space_size)
+            res = minimize(f, x0=np.array([0.8]*space_size) , method=attack,
+                           bounds=[(0,1)]*space_size, 
+                           callback=lambda x: print("Trying [%s] gives %.3f" % (' '.join(["%.3f"%i for i in x]), f(x))))
             print(["Failure", "Success"][res.success])
             print(res.message)
             print(f"{res.x} gives {f(res.x)}")
             t_adv = [res.x]
         
-        elif attack in [x + "+HopSkipJump" for x in SCIPY_BB]:
-            from scipy.optimize import minimize
+        # elif attack in [x + "+HopSkipJump" for x in SCIPY_BB]:
+        #     from scipy.optimize import minimize
+        #     f = lambda x: model_fn(np.reshape(x,(1, space_size)), tensor=False)[0][1]
+        #     res = minimize(f, x0=np.array([0]*space_size) , method=attack.split('+')[0],
+        #                    bounds=[(0,1)]*space_size)
+        #     print(res.message)
+        #     print(f"{res.x} gives {f(res.x)}")
+        #     if f(res.x) < 0.5:
+        #         t_adv = hop_skip_jump_attack(model_fn,
+        #                                 Tensor([[0]*space_size]),
+        #                                 2,
+        #                                 image_target=Tensor([res.x]),
+        #                                 constraint=2,
+        #                                 gamma=2,
+        #                                 num_iterations=10,
+        #                                 initial_num_evals=10,
+        #                                 max_num_evals=100,
+        #                                 batch_size=32)
+        #     else:
+        #         t_adv = [res.x]
+        elif attack == "Basin-hopping":
+            from scipy.optimize import basinhopping
             f = lambda x: model_fn(np.reshape(x,(1, space_size)), tensor=False)[0][1]
-            res = minimize(f, x0=np.array([0]*space_size) , method=attack.split('+')[0], bounds=[(0,1)]*space_size)
+            def callback(x, y, *args):
+                print("Local optimizer yields x=%s => f=%.3f" % (x, y))
+                if y < 0.4:
+                    return True
+            res = basinhopping(f, x0=np.array([0.5]*space_size), niter=10, interval=10, stepsize=0.7,
+                           callback=callback,
+                           minimizer_kwargs={"method": "COBYLA"})
+            print(["Failure", "Success"][res.success])
             print(res.message)
-            print(f"{res.x} gives {f(res.x)}")
-            if f(res.x) < 0.5:
-                t_adv = hop_skip_jump_attack(model_fn,
-                                        Tensor([[0]*space_size]),
-                                        2,
-                                        image_target=Tensor([res.x]),
-                                        constraint=2,
-                                        gamma=2,
-                                        num_iterations=10,
-                                        initial_num_evals=10,
-                                        max_num_evals=100)
-            else:
-                t_adv = [res.x]
+            print(f"{res.x} gives {f(res.x)} probability of being packed")
+            t_adv = [res.x]
+        elif attack == "GA":
+            import pygad
+            fitness_function = lambda _, x, __: model_fn(np.reshape(x,(1, space_size)), tensor=False)[0][0]
+            ga_instance = pygad.GA(num_generations=50,
+                       num_parents_mating=2,
+                       fitness_func=fitness_function,
+                       sol_per_pop=8,
+                       num_genes=space_size,
+                       init_range_low=0,
+                       init_range_high=1,
+                       parent_selection_type="sss",
+                       keep_parents=1,
+                       crossover_type="single_point",
+                       mutation_type="random",
+                       mutation_percent_genes=10)
+            ga_instance.run()
+            solution, solution_fitness, _ = ga_instance.best_solution()
+            print(f"{solution} gives {1-solution_fitness} probaility of being packed")
+            t_adv = [solution]
         else:
             raise ValueError("%s optimisation algorithm is not defined." % attack)
-        
         model_fn.cleanup()
         model_fn.apply_alterations(t_adv[0], executable, verbose=True)
         
